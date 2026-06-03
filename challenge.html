@@ -21,26 +21,52 @@
     const { useState, useEffect } = React;
 
     // ============================================
-    // STOCKAGE
+    // STOCKAGE (identique à index.html)
     // ============================================
-    const STORAGE_KEY = "vrai_ou_faux_defis";
+    const STORAGE_KEYS = {
+      USERS: "vrai_ou_faux_users",
+      CHALLENGES: "vrai_ou_faux_challenges",
+      STATS: "vrai_ou_faux_stats"
+    };
 
     const getChallenge = (challengeId) => {
-      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
       return challenges[challengeId] || null;
     };
 
-    const addFriendResponse = (challengeId, friendName, answers) => {
-      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const addParticipant = (challengeId, participantData) => {
+      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
       if (challenges[challengeId]) {
-        if (!challenges[challengeId].friendsResponses) challenges[challengeId].friendsResponses = [];
-        challenges[challengeId].friendsResponses.push({
-          name: friendName,
-          answers: answers,
+        if (!challenges[challengeId].participants) challenges[challengeId].participants = [];
+        challenges[challengeId].participants.push({
+          ...participantData,
           date: new Date().toISOString()
         });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(challenges));
+        localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(challenges));
+        
+        // Mettre à jour les stats du créateur
+        updateUserStats(challenges[challengeId].creatorId);
       }
+    };
+
+    const updateUserStats = (userId) => {
+      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
+      const userChallenges = Object.values(challenges).filter(c => c.creatorId === userId);
+      
+      const stats = {
+        totalChallenges: userChallenges.length,
+        totalParticipants: userChallenges.reduce((sum, c) => sum + (c.participants?.length || 0), 0),
+        lastActive: new Date().toISOString()
+      };
+      
+      const allStats = JSON.parse(localStorage.getItem(STORAGE_KEYS.STATS) || "{}");
+      allStats[userId] = stats;
+      localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(allStats));
+    };
+
+    // Récupérer l'utilisateur connecté
+    const getCurrentUser = () => {
+      return JSON.parse(localStorage.getItem("current_user") || "null");
     };
 
     // ============================================
@@ -54,9 +80,9 @@
 
     const CheckCircleIcon = () => <Icon d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01l-3-3" />;
     const XCircleIcon = () => <Icon d="M10 14L21 3 M21 14L10 3" />;
-    const ArrowLeftIcon = () => <Icon d="M19 12H5 M12 19l-7-7 7-7" />;
     const CheckIcon = () => <Icon d="M20 6L9 17l-5-5" />;
     const UsersIcon = () => <Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
+    const UserIcon = () => <Icon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />;
 
     // ============================================
     // BOUTON
@@ -98,6 +124,7 @@
       const challengeId = urlParams.get('id');
       
       const [challenge, setChallenge] = useState(null);
+      const [currentUser, setCurrentUser] = useState(null);
       const [friendName, setFriendName] = useState("");
       const [currentIndex, setCurrentIndex] = useState(0);
       const [answers, setAnswers] = useState([]);
@@ -106,6 +133,9 @@
       const [error, setError] = useState(false);
 
       useEffect(() => {
+        const user = getCurrentUser();
+        setCurrentUser(user);
+        
         if (challengeId) {
           const data = getChallenge(challengeId);
           if (data) {
@@ -129,7 +159,12 @@
         if (currentIndex + 1 < challenge.questions.length) {
           setCurrentIndex(currentIndex + 1);
         } else {
-          addFriendResponse(challengeId, friendName, newAnswers);
+          // Sauvegarder les réponses dans la DB
+          addParticipant(challengeId, {
+            name: friendName,
+            userId: currentUser?.id || null,
+            answers: newAnswers
+          });
           setSubmitted(true);
         }
       };
@@ -141,7 +176,11 @@
         if (currentIndex + 1 < challenge.questions.length) {
           setCurrentIndex(currentIndex + 1);
         } else {
-          addFriendResponse(challengeId, friendName, newAnswers);
+          addParticipant(challengeId, {
+            name: friendName,
+            userId: currentUser?.id || null,
+            answers: newAnswers
+          });
           setSubmitted(true);
         }
       };
@@ -180,10 +219,10 @@
               <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Merci {friendName} !</h2>
               <p style={{ color: "#6B7280", marginBottom: 24 }}>
                 Tes réponses ont été enregistrées.<br/>
-                {challenge.creatorName} pourra les voir.
+                {challenge.creatorName} pourra les voir dans ses résultats.
               </p>
               <a href="index.html" style={{ display: "inline-block", background: "#1A1A1A", color: "#fff", padding: "12px 24px", borderRadius: 14, textDecoration: "none", fontWeight: 600 }}>
-                ← Créer mon défi
+                ← Retour à l'accueil
               </a>
             </div>
           </div>
@@ -191,6 +230,13 @@
       }
 
       if (step === "info") {
+        // Si l'utilisateur est déjà connecté, pré-remplir son nom
+        useEffect(() => {
+          if (currentUser && !friendName) {
+            setFriendName(currentUser.name);
+          }
+        }, [currentUser]);
+
         return (
           <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
             <div style={{ maxWidth: 460, width: "100%", background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 32 }}>
@@ -202,12 +248,18 @@
                 </div>
                 <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Défi de {challenge.creatorName}</h2>
                 <p style={{ color: "#6B7280", fontSize: 14 }}>{challenge.questions.length} questions · Réponds avec honnêteté !</p>
+                {currentUser && (
+                  <p style={{ color: "#059669", fontSize: 12, marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                    <UserIcon size={12} /> Connecté en tant que {currentUser.name}
+                  </p>
+                )}
               </div>
 
               <div style={{ marginBottom: 24 }}>
                 <input
                   type="text"
                   placeholder="Ton pseudo..."
+                  value={friendName}
                   style={{ width: "100%", padding: "12px 16px", background: "#F0EDE8", border: "1.5px solid #E5E0D8", borderRadius: 14, fontSize: 15 }}
                   onChange={(e) => setFriendName(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && friendName.trim() && setStep("quiz")}
