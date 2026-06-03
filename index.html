@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Vrai ou Faux ? - Défie tes amis</title>
+  <title>Vrai ou Faux ? - Crée ton défi</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -11,10 +11,7 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     *, *::before, *::after { font-family: 'Outfit', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    input, textarea, select { font-family: 'Outfit', sans-serif; }
-    input::placeholder, textarea::placeholder { color: #B8B0A4; }
-    input:focus, textarea:focus, select:focus { outline: none; }
+    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     .animate-fade-in-up { animation: fadeInUp 0.5s ease-out; }
   </style>
@@ -23,10 +20,138 @@
   <div id="root"></div>
   <script type="text/babel">
 
-    const { useState } = React;
+    const { useState, useEffect } = React;
 
     // ============================================
-    // ICÔNES SVG (style Feather Icons)
+    // 50 QUESTIONS
+    // ============================================
+    const ALL_QUESTIONS = [
+      "Je me suis déjà endormi(e) en classe", "J'ai déjà menti sur mon âge", "Je parle souvent tout seul(e)",
+      "J'ai déjà pleuré devant un film d'animation", "Je check mon téléphone au moins 50 fois par jour",
+      "J'ai déjà oublié l'anniversaire de quelqu'un d'important", "Je danse quand personne ne me voit",
+      "J'ai déjà envoyé un message à la mauvaise personne", "Je fais des cauchemars souvent",
+      "Je crois aux signes du destin", "Je suis déjà tombé(e) amoureux(se) sans le dire",
+      "J'ai déjà eu le cœur brisé", "Je pense encore à mon/mon ex parfois", "Je suis jaloux(se) facilement",
+      "Je fais semblant d'aller bien alors que ça ne va pas", "J'ai déjà regretté une relation passée",
+      "Je suis plus sensible que ce que les gens pensent", "J'ai déjà ghosté quelqu'un sans raison",
+      "Je garde des secrets que personne ne connaît", "Je me suis déjà disputé(e) avec mes parents",
+      "J'ai déjà eu un crush sur un(e) ami(e)", "Je suis déjà sorti(e) avec quelqu'un que mes amis n'aimaient pas",
+      "J'ai déjà embrassé quelqu'un sous la pluie", "Je préfère les câlins à autre chose",
+      "J'ai déjà eu un rendez-vous galant désastreux", "Je suis déjà rentré(e) très tard sans prévenir",
+      "J'ai déjà eu un petit ami / petite amie secrètement", "Je rougis facilement quand on me complimente",
+      "J'ai déjà écrit une lettre d'amour jamais envoyée", "Je suis déjà allé(e) à un rendez-vous après une app",
+      "Je parle à mes animaux de compagnie", "J'ai déjà mangé quelque chose d'expiré exprès",
+      "Je fais la grasse matinée tous les week-ends", "J'ai déjà triché à un jeu de société",
+      "Je chante faux mais j'assume", "J'ai déjà parlé à mon ex après une rupture",
+      "Je pleure facilement dans les films", "J'ai déjà imité mon patron / professeur",
+      "Je prends des selfies en cachette", "J'ai déjà fait une blague qui a mal tourné",
+      "Je suis déjà allé(e) en boîte de nuit seul(e)", "J'ai déjà menti sur mon CV",
+      "Je regarde parfois des vidéos pour m'endormir", "J'ai déjà stalké mon ex sur les réseaux",
+      "Je garde des messages anciens par nostalgie", "J'ai déjà regretté d'avoir dit quelque chose sous la colère",
+      "Je suis plutôt cœur que raison", "Je fais des insomnies à cause de mes pensées",
+      "Je compare ma vie à celle des autres sur les réseaux", "Je pense que l'amour peut arriver n'importe quand"
+    ];
+
+    const getRandomQuestions = () => {
+      const shuffled = [...ALL_QUESTIONS];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled.slice(0, 10);
+    };
+
+    // ============================================
+    // SYSTÈME DE STOCKAGE JSON
+    // ============================================
+    const STORAGE_KEYS = {
+      USERS: "vrai_ou_faux_users",
+      CHALLENGES: "vrai_ou_faux_challenges",
+      STATS: "vrai_ou_faux_stats"
+    };
+
+    // Sauvegarder un utilisateur
+    const saveUser = (userData) => {
+      const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
+      users[userData.id] = userData;
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      return userData;
+    };
+
+    // Récupérer un utilisateur
+    const getUser = (userId) => {
+      const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
+      return users[userId] || null;
+    };
+
+    // Récupérer tous les utilisateurs
+    const getAllUsers = () => {
+      return JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
+    };
+
+    // Ajouter un ami à un utilisateur
+    const addFriend = (userId, friendId) => {
+      const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
+      if (users[userId] && !users[userId].friends.includes(friendId)) {
+        users[userId].friends.push(friendId);
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      }
+    };
+
+    // Sauvegarder un défi
+    const saveChallenge = (challengeId, data) => {
+      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
+      challenges[challengeId] = {
+        ...data,
+        createdAt: new Date().toISOString(),
+        participants: data.participants || []
+      };
+      localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(challenges));
+      
+      // Mettre à jour les stats de l'utilisateur
+      updateUserStats(data.creatorId);
+    };
+
+    // Récupérer un défi
+    const getChallenge = (challengeId) => {
+      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
+      return challenges[challengeId] || null;
+    };
+
+    // Mettre à jour les statistiques d'un utilisateur
+    const updateUserStats = (userId) => {
+      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
+      const userChallenges = Object.values(challenges).filter(c => c.creatorId === userId);
+      
+      const stats = {
+        totalChallenges: userChallenges.length,
+        totalParticipants: userChallenges.reduce((sum, c) => sum + (c.participants?.length || 0), 0),
+        lastActive: new Date().toISOString()
+      };
+      
+      const allStats = JSON.parse(localStorage.getItem(STORAGE_KEYS.STATS) || "{}");
+      allStats[userId] = stats;
+      localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(allStats));
+    };
+
+    // Ajouter un participant à un défi
+    const addParticipant = (challengeId, participantData) => {
+      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
+      if (challenges[challengeId]) {
+        if (!challenges[challengeId].participants) challenges[challengeId].participants = [];
+        challenges[challengeId].participants.push({
+          ...participantData,
+          date: new Date().toISOString()
+        });
+        localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(challenges));
+        
+        // Mettre à jour les stats du créateur
+        updateUserStats(challenges[challengeId].creatorId);
+      }
+    };
+
+    // ============================================
+    // ICÔNES SVG
     // ============================================
     const Icon = ({ d, size = 20, color = "currentColor", strokeWidth = 2 }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -37,7 +162,6 @@
     const HelpCircleIcon = () => <Icon d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 16v-4 M12 8h.01" />;
     const CheckCircleIcon = () => <Icon d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01l-3-3" />;
     const XCircleIcon = () => <Icon d="M10 14L21 3 M21 14L10 3" />;
-    const ArrowRightIcon = () => <Icon d="M5 12h14 M12 5l7 7-7 7" />;
     const ArrowLeftIcon = () => <Icon d="M19 12H5 M12 19l-7-7 7-7" />;
     const SendIcon = () => <Icon d="M22 2L11 13 M22 2l-7 20-4-9-9-4 20-7z" />;
     const CopyIcon = () => <Icon d="M16 3h5v5 M14 10L21 3 M10 14L3 21 M21 16v5h-5 M8 21H3v-5" />;
@@ -49,42 +173,20 @@
     const ZapIcon = () => <Icon d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />;
     const ClockIcon = () => <Icon d="M12 6v6l4 2 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" />;
     const HeartIcon = () => <Icon d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />;
+    const UsersIcon = () => <Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
+    const TrophyIcon = () => <Icon d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6 M18 9h1.5a2.5 2.5 0 0 0 0-5H18 M4 22h16 M12 15v7 M9 11v1.5a3 3 0 0 0 6 0V11" />;
+    const LogoutIcon = () => <Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l4-4-4-4 M12 3h9v9 M12 12h9" />;
 
     // ============================================
-    // DONNÉES DU QUIZ (20 questions)
-    // ============================================
-    const QUESTIONS = [
-      { text: "Êtes-vous toujours en retard ?" },
-      { text: "Voulez-vous vous marier dans les 5 prochaines années ?" },
-      { text: "Aimez-vous les films d'horreur ?" },
-      { text: "Avez-vous déjà eu une relation ?" },
-      { text: "Avez-vous déjà échoué à un examen important ?" },
-      { text: "Croyez-vous aux fantômes ?" },
-      { text: "Aimez-vous passer du temps seul ?" },
-      { text: "Avez-vous déjà pardonné à quelqu'un qui vous a fait du mal ?" },
-      { text: "Faites-vous beaucoup confiance aux gens ?" },
-      { text: "Chantez-vous sous la douche ?" },
-      { text: "Voulez-vous avoir des enfants ?" },
-      { text: "Portez-vous du parfum tous les jours ?" },
-      { text: "Aimes-tu aller à la gym ?" },
-      { text: "Avez-vous des tatouages ?" },
-      { text: "Avez-vous déjà écrit une lettre d'amour ?" },
-      { text: "Savez-vous danser ?" },
-      { text: "Aimes-tu cuisiner ?" },
-      { text: "Dormez-vous beaucoup ?" },
-      { text: "Aimez-vous les animaux de compagnie ?" },
-      { text: "Te lèves-tu tôt ?" }
-    ];
-
-    // ============================================
-    // COMPOSANTS UI (style NZEM)
+    // COMPOSANT BOUTON
     // ============================================
     function Button({ children, onClick, variant = "primary", disabled, icon: IconComp, full }) {
       const variants = {
         primary: { background: "#1A1A1A", color: "#fff", border: "none" },
         secondary: { background: "#F0EDE8", color: "#1A1A1A", border: "1.5px solid #E5E0D8" },
         success: { background: "#059669", color: "#fff", border: "none" },
-        gradient: { background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "#fff", border: "none" }
+        gradient: { background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "#fff", border: "none" },
+        danger: { background: "#DC2626", color: "#fff", border: "none" }
       };
       return (
         <button
@@ -103,49 +205,221 @@
             cursor: disabled ? "not-allowed" : "pointer",
             opacity: disabled ? 0.55 : 1,
             width: full ? "100%" : "auto",
-            transition: "opacity .15s, transform .1s"
+            transition: "all 0.2s ease"
           }}
-          onMouseDown={e => e.currentTarget.style.transform = "scale(0.97)"}
-          onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
         >
-          {IconComp && <IconComp size={15} />}
+          {IconComp && <IconComp size={16} />}
           {children}
         </button>
       );
     }
 
     // ============================================
-    // COMPOSANT PRINCIPAL
+    // PAGE PROFIL UTILISATEUR
     // ============================================
-    function QuizApp() {
-      const [step, setStep] = useState("welcome");
-      const [userName, setUserName] = useState("");
+    function ProfilePage({ user, onLogout, onStartNewChallenge }) {
+      const [allUsers, setAllUsers] = useState({});
+      const [userChallenges, setUserChallenges] = useState([]);
+      const [userStats, setUserStats] = useState(null);
+      const [showAddFriend, setShowAddFriend] = useState(false);
+      const [friendSearch, setFriendSearch] = useState("");
+
+      useEffect(() => {
+        const users = getAllUsers();
+        setAllUsers(users);
+        
+        const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
+        const myChallenges = Object.values(challenges).filter(c => c.creatorId === user.id);
+        setUserChallenges(myChallenges);
+        
+        const stats = JSON.parse(localStorage.getItem(STORAGE_KEYS.STATS) || "{}");
+        setUserStats(stats[user.id] || { totalChallenges: 0, totalParticipants: 0 });
+      }, [user.id]);
+
+      const addNewFriend = (friendId) => {
+        addFriend(user.id, friendId);
+        setAllUsers(getAllUsers());
+        setShowAddFriend(false);
+        setFriendSearch("");
+      };
+
+      const friendList = user.friends || [];
+      const availableFriends = Object.values(allUsers).filter(u => 
+        u.id !== user.id && !friendList.includes(u.id) && 
+        (friendSearch === "" || u.name.toLowerCase().includes(friendSearch.toLowerCase()))
+      );
+
+      return (
+        <div style={{ minHeight: "100vh", padding: "40px 16px" }}>
+          <div style={{ maxWidth: 800, margin: "0 auto" }}>
+            
+            {/* En-tête du profil */}
+            <div style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 32, marginBottom: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+                <div style={{ width: 80, height: 80, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: 40, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <UserIcon size={40} color="white" strokeWidth={1.5} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h1 style={{ fontSize: 28, fontWeight: 800, color: "#1A1A1A" }}>{user.name}</h1>
+                  <p style={{ color: "#9A9488", fontSize: 13 }}>ID: {user.id}</p>
+                </div>
+                <Button variant="secondary" icon={LogoutIcon} onClick={onLogout}>
+                  Déconnexion
+                </Button>
+              </div>
+              
+              {/* Statistiques */}
+              <div style={{ display: "flex", gap: 20, marginTop: 24, paddingTop: 24, borderTop: "1px solid #F0EDE8" }}>
+                <div style={{ textAlign: "center", flex: 1 }}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "#667eea" }}>{userStats?.totalChallenges || 0}</div>
+                  <div style={{ fontSize: 12, color: "#9A9488" }}>Défis créés</div>
+                </div>
+                <div style={{ textAlign: "center", flex: 1 }}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "#667eea" }}>{userStats?.totalParticipants || 0}</div>
+                  <div style={{ fontSize: 12, color: "#9A9488" }}>Participants</div>
+                </div>
+                <div style={{ textAlign: "center", flex: 1 }}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "#667eea" }}>{friendList.length}</div>
+                  <div style={{ fontSize: 12, color: "#9A9488" }}>Amis</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bouton créer défi */}
+            <Button variant="gradient" full icon={ZapIcon} onClick={onStartNewChallenge} style={{ marginBottom: 24 }}>
+              + Créer un nouveau défi
+            </Button>
+
+            {/* Liste des amis */}
+            <div style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24, marginBottom: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                  <UsersIcon size={20} /> Mes amis ({friendList.length})
+                </h2>
+                <button onClick={() => setShowAddFriend(!showAddFriend)} style={{ background: "#667eea", color: "#fff", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  + Ajouter
+                </button>
+              </div>
+
+              {showAddFriend && (
+                <div style={{ marginBottom: 20, padding: 16, background: "#F0EDE8", borderRadius: 16 }}>
+                  <input
+                    type="text"
+                    placeholder="Rechercher un utilisateur..."
+                    value={friendSearch}
+                    onChange={(e) => setFriendSearch(e.target.value)}
+                    style={{ width: "100%", padding: "10px 14px", borderRadius: 12, border: "1px solid #E5E0D8", marginBottom: 12 }}
+                  />
+                  {availableFriends.length > 0 ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {availableFriends.map(friend => (
+                        <div key={friend.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#fff", borderRadius: 12 }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{friend.name}</div>
+                            <div style={{ fontSize: 10, color: "#9A9488" }}>{friend.id}</div>
+                          </div>
+                          <button onClick={() => addNewFriend(friend.id)} style={{ background: "#059669", color: "#fff", border: "none", borderRadius: 10, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>
+                            Ajouter
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ textAlign: "center", color: "#9A9488", fontSize: 13 }}>Aucun utilisateur trouvé</p>
+                  )}
+                </div>
+              )}
+
+              {friendList.length === 0 ? (
+                <p style={{ textAlign: "center", color: "#9A9488", padding: "20px 0" }}>Aucun ami pour le moment. Ajoute-en !</p>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {friendList.map(friendId => {
+                    const friend = allUsers[friendId];
+                    return friend ? (
+                      <div key={friendId} style={{ background: "#F0EDE8", borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+                        <UserIcon size={14} />
+                        <span style={{ fontWeight: 500 }}>{friend.name}</span>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Historique des défis */}
+            <div style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+                <TrophyIcon size={20} /> Mes défis ({userChallenges.length})
+              </h2>
+              {userChallenges.length === 0 ? (
+                <p style={{ textAlign: "center", color: "#9A9488", padding: "20px 0" }}>Aucun défi créé pour le moment</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {userChallenges.map(challenge => (
+                    <div key={challenge.id} style={{ border: "1px solid #F0EDE8", borderRadius: 16, padding: 16 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 15 }}>Défi du {new Date(challenge.createdAt).toLocaleDateString("fr-FR")}</div>
+                          <div style={{ fontSize: 12, color: "#9A9488" }}>{challenge.participants?.length || 0} participants</div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => window.open(`challenge.html?id=${challenge.id}`, '_blank')} style={{ background: "#667eea", color: "#fff", border: "none", borderRadius: 10, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
+                            🔗 Partager
+                          </button>
+                          <button onClick={() => window.open(`results.html?id=${challenge.id}`, '_blank')} style={{ background: "#1A1A1A", color: "#fff", border: "none", borderRadius: 10, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
+                            📊 Résultats
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================
+    // PAGE CRÉATION DE DÉFI
+    // ============================================
+    function CreateQuizPage({ user, onComplete, onBack }) {
+      const [step, setStep] = useState("quiz");
       const [currentIndex, setCurrentIndex] = useState(0);
       const [answers, setAnswers] = useState([]);
+      const [questions, setQuestions] = useState([]);
       const [challengeId, setChallengeId] = useState(null);
       const [copied, setCopied] = useState(false);
 
+      useEffect(() => {
+        setQuestions(getRandomQuestions());
+        setAnswers(new Array(10));
+      }, []);
+
       const answeredCount = answers.filter(a => a !== undefined).length;
-      const progressPercent = (answeredCount / QUESTIONS.length) * 100;
+      const progressPercent = (answeredCount / 10) * 100;
 
-      const generateChallengeId = () => "DEFI_" + Math.random().toString(36).substr(2, 9).toUpperCase();
-
-      const startQuiz = (name) => {
-        if (!name.trim()) name = "Joueur";
-        setUserName(name);
-        setAnswers(new Array(QUESTIONS.length));
-        setCurrentIndex(0);
-        setStep("quiz");
-        setChallengeId(generateChallengeId());
-      };
+      const generateChallengeId = () => "DEFI_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
 
       const answerQuestion = (value) => {
         const newAnswers = [...answers];
         newAnswers[currentIndex] = value;
         setAnswers(newAnswers);
-        if (currentIndex + 1 < QUESTIONS.length) {
+        if (currentIndex + 1 < 10) {
           setCurrentIndex(currentIndex + 1);
         } else {
+          const newChallengeId = generateChallengeId();
+          setChallengeId(newChallengeId);
+          saveChallenge(newChallengeId, {
+            id: newChallengeId,
+            creatorId: user.id,
+            creatorName: user.name,
+            questions: questions,
+            creatorAnswers: newAnswers,
+            participants: []
+          });
           setStep("result");
         }
       };
@@ -154,9 +428,19 @@
         const newAnswers = [...answers];
         newAnswers[currentIndex] = null;
         setAnswers(newAnswers);
-        if (currentIndex + 1 < QUESTIONS.length) {
+        if (currentIndex + 1 < 10) {
           setCurrentIndex(currentIndex + 1);
         } else {
+          const newChallengeId = generateChallengeId();
+          setChallengeId(newChallengeId);
+          saveChallenge(newChallengeId, {
+            id: newChallengeId,
+            creatorId: user.id,
+            creatorName: user.name,
+            questions: questions,
+            creatorAnswers: newAnswers,
+            participants: []
+          });
           setStep("result");
         }
       };
@@ -165,12 +449,7 @@
         if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
       };
 
-      const getFinalScore = () => {
-        const validAnswers = answers.filter(a => a !== undefined && a !== null).length;
-        return Math.round((validAnswers / QUESTIONS.length) * 100);
-      };
-
-      const getShareUrl = () => `${window.location.origin}${window.location.pathname}?challenge=${challengeId}&user=${encodeURIComponent(userName)}`;
+      const getShareUrl = () => `${window.location.origin}${window.location.pathname.replace("index.html", "challenge.html")}?id=${challengeId}`;
 
       const copyToClipboard = async () => {
         await navigator.clipboard.writeText(getShareUrl());
@@ -179,122 +458,51 @@
       };
 
       const shareOnWhatsApp = () => {
-        const text = `Défi "Vrai ou Faux" !\n\n${userName} vient de créer un quiz. Es-tu prêt à relever le défi ?\n\n👉 ${getShareUrl()}`;
+        const text = `🎯 Défi "Vrai ou Faux" !\n\n${user.name} vient de créer un quiz de 10 questions. Es-tu prêt à relever le défi ?\n\n👉 ${getShareUrl()}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
       };
 
-      const restartQuiz = () => {
-        setStep("welcome");
-        setUserName("");
-        setAnswers([]);
-        setCurrentIndex(0);
-        setChallengeId(null);
-      };
-
-      // ÉCRAN D'ACCUEIL
-      if (step === "welcome") {
+      if (step === "quiz" && questions.length > 0) {
+        const currentQuestion = questions[currentIndex];
         return (
           <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-            <div style={{ maxWidth: 460, width: "100%", background: "rgba(255,255,255,0.95)", backdropFilter: "blur(8px)", borderRadius: 24, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", padding: 32 }}>
-              <div style={{ textAlign: "center", marginBottom: 32 }}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-                  <div style={{ width: 80, height: 80, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)" }}>
-                    <ZapIcon size={40} color="white" strokeWidth={1.5} />
-                  </div>
-                </div>
-                <h1 style={{ fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 8 }}>
-                  Vrai ou Faux ?
-                </h1>
-                <p style={{ color: "#9A9488", fontSize: 14 }}>Crée ton défi personnalisé</p>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <input
-                  type="text"
-                  placeholder="Ton pseudo..."
-                  style={{ width: "100%", padding: "12px 16px", background: "#F0EDE8", border: "1.5px solid #E5E0D8", borderRadius: 14, fontSize: 15, fontWeight: 500 }}
-                  onKeyPress={(e) => e.key === 'Enter' && startQuiz(e.target.value)}
-                  id="userNameInput"
-                />
-                <Button variant="gradient" full icon={ThumbsUpIcon} onClick={() => startQuiz(document.getElementById('userNameInput').value)}>
-                  Commencer le défi
-                </Button>
-              </div>
-
-              <div style={{ marginTop: 24, textAlign: "center", fontSize: 11, color: "#9A9488", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <ClockIcon size={12} />
-                20 questions · Défie tes amis
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      // ÉCRAN QUIZ
-      if (step === "quiz") {
-        const currentQuestion = QUESTIONS[currentIndex];
-
-        return (
-          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-            <div style={{ maxWidth: 560, width: "100%", background: "rgba(255,255,255,0.95)", backdropFilter: "blur(8px)", borderRadius: 24, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", padding: 28 }}>
+            <div style={{ maxWidth: 560, width: "100%", background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 28 }}>
               
+              <button onClick={onBack} style={{ marginBottom: 20, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "#667eea" }}>
+                <ArrowLeftIcon size={16} /> Retour au profil
+              </button>
+
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#9A9488", marginBottom: 8 }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <TrendingUpIcon size={12} />
-                    Progression
-                  </span>
-                  <span>{answeredCount}/{QUESTIONS.length}</span>
+                  <span>Progression</span>
+                  <span>{answeredCount}/10</span>
                 </div>
                 <div style={{ height: 4, background: "#F0EDE8", borderRadius: 99, overflow: "hidden" }}>
-                  <div style={{ height: "100%", background: "linear-gradient(90deg, #667eea 0%, #764ba2 100%)", borderRadius: 99, width: `${progressPercent}%`, transition: "width 0.5s ease-out" }}></div>
+                  <div style={{ height: "100%", background: "linear-gradient(90deg, #667eea 0%, #764ba2 100%)", borderRadius: 99, width: `${progressPercent}%` }}></div>
                 </div>
               </div>
 
               <div style={{ textAlign: "center", marginBottom: 32 }}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-                  <div style={{ width: 80, height: 80, background: "#F0EDE8", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <HelpCircleIcon size={40} color="#667eea" strokeWidth={1.5} />
-                  </div>
-                </div>
-                <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1A1A1A", marginBottom: 8 }}>
-                  {currentQuestion.text}
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1A1A1A", marginBottom: 8, lineHeight: 1.4 }}>
+                  {currentQuestion}
                 </h2>
-                <p style={{ fontSize: 13, color: "#9A9488" }}>
-                  Question {currentIndex + 1} / {QUESTIONS.length}
-                </p>
+                <p style={{ fontSize: 13, color: "#9A9488" }}>Question {currentIndex + 1} / 10</p>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
-                <button
-                  onClick={() => answerQuestion(true)}
-                  style={{ flex: 1, background: "#059669", color: "#fff", fontWeight: 700, padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-                >
-                  <CheckCircleIcon size={18} color="white" />
-                  Vrai
+                <button onClick={() => answerQuestion(true)} style={{ background: "#059669", color: "#fff", fontWeight: 700, padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <CheckCircleIcon size={18} color="white" /> Vrai
                 </button>
-                <button
-                  onClick={() => answerQuestion(false)}
-                  style={{ flex: 1, background: "#DC2626", color: "#fff", fontWeight: 700, padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-                >
-                  <XCircleIcon size={18} color="white" />
-                  Faux
+                <button onClick={() => answerQuestion(false)} style={{ background: "#DC2626", color: "#fff", fontWeight: 700, padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <XCircleIcon size={18} color="white" /> Faux
                 </button>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                <button
-                  onClick={previousQuestion}
-                  disabled={currentIndex === 0}
-                  style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "transparent", cursor: currentIndex === 0 ? "not-allowed" : "pointer", color: currentIndex === 0 ? "#D1D5DB" : "#667eea", display: "flex", alignItems: "center", gap: 4 }}
-                >
-                  <ArrowLeftIcon size={14} />
-                  Précédent
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <button onClick={previousQuestion} disabled={currentIndex === 0} style={{ padding: "6px 12px", background: "transparent", border: "none", cursor: currentIndex === 0 ? "not-allowed" : "pointer", color: currentIndex === 0 ? "#D1D5DB" : "#667eea" }}>
+                  ← Précédent
                 </button>
-                <button
-                  onClick={skipQuestion}
-                  style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#9A9488" }}
-                >
+                <button onClick={skipQuestion} style={{ padding: "6px 12px", background: "transparent", border: "none", cursor: "pointer", color: "#9A9488" }}>
                   Sauter
                 </button>
               </div>
@@ -303,66 +511,162 @@
         );
       }
 
-      // ÉCRAN RÉSULTATS
       if (step === "result") {
-        const score = getFinalScore();
-        const answeredRealCount = answers.filter(a => a !== undefined && a !== null).length;
-
+        const score = Math.round((answeredCount / 10) * 100);
         return (
           <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-            <div style={{ maxWidth: 460, width: "100%", background: "rgba(255,255,255,0.95)", backdropFilter: "blur(8px)", borderRadius: 24, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", padding: 32 }}>
+            <div style={{ maxWidth: 460, width: "100%", background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 32 }}>
               
               <div style={{ textAlign: "center", marginBottom: 24 }}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-                  <div style={{ width: 80, height: 80, background: "linear-gradient(135deg, #059669 0%, #10B981 100%)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)" }}>
-                    <CheckIcon size={40} color="white" strokeWidth={1.5} />
-                  </div>
+                <div style={{ width: 80, height: 80, background: "linear-gradient(135deg, #059669 0%, #10B981 100%)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                  <CheckIcon size={40} color="white" />
                 </div>
-                <h2 style={{ fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 4 }}>
-                  Bravo, {userName} !
+                <h2 style={{ fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  Bravo, {user.name} !
                 </h2>
-                <p style={{ color: "#9A9488", fontSize: 13 }}>Ton défi est prêt à être partagé</p>
+                <p style={{ color: "#9A9488" }}>Ton défi est prêt</p>
               </div>
 
               <div style={{ background: "#F0EDE8", borderRadius: 16, padding: 20, marginBottom: 24, textAlign: "center" }}>
-                <div style={{ fontSize: 48, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                  {score}%
-                </div>
-                <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <HeartIcon size={14} />
-                  {answeredRealCount} / {QUESTIONS.length} questions répondues
-                </div>
+                <div style={{ fontSize: 48, fontWeight: 800, color: "#667eea" }}>{score}%</div>
+                <div style={{ fontSize: 13, color: "#6B7280" }}>{answeredCount} / 10 répondues</div>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
                 <Button variant="primary" full icon={CopyIcon} onClick={copyToClipboard}>
-                  {copied ? "Copié !" : "Copier le lien du défi"}
+                  {copied ? "Copié !" : "Copier le lien"}
                 </Button>
                 <Button variant="success" full icon={SendIcon} onClick={shareOnWhatsApp}>
                   Partager sur WhatsApp
                 </Button>
-              </div>
-
-              <div style={{ background: "#F0EDE8", borderRadius: 14, padding: 12, marginBottom: 20, wordBreak: "break-all", fontSize: 11, color: "#6B7280", fontFamily: "monospace" }}>
-                🔗 {getShareUrl()}
-              </div>
-
-              <Button variant="secondary" full icon={RefreshCwIcon} onClick={restartQuiz}>
-                Créer un nouveau défi
-              </Button>
-
-              <div style={{ textAlign: "center", fontSize: 10, color: "#9A9488", marginTop: 24, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <UserIcon size={12} />
-                Envoie le lien à tes amis pour qu'ils répondent à leur tour !
+                <Button variant="secondary" full onClick={onComplete}>
+                  Retour au profil
+                </Button>
               </div>
             </div>
           </div>
         );
       }
+
+      return null;
+    }
+
+    // ============================================
+    // PAGE DE CONNEXION / INSCRIPTION
+    // ============================================
+    function LoginPage({ onLogin }) {
+      const [isLogin, setIsLogin] = useState(true);
+      const [name, setName] = useState("");
+      const [userId, setUserId] = useState("");
+      const [error, setError] = useState("");
+
+      const handleSubmit = () => {
+        if (isLogin) {
+          const user = getUser(userId);
+          if (user) {
+            onLogin(user);
+          } else {
+            setError("Utilisateur non trouvé");
+          }
+        } else {
+          if (!name.trim()) {
+            setError("Nom requis");
+            return;
+          }
+          const newUser = {
+            id: "USER_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+            name: name.trim(),
+            friends: [],
+            createdAt: new Date().toISOString()
+          };
+          saveUser(newUser);
+          onLogin(newUser);
+        }
+      };
+
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ maxWidth: 420, width: "100%", background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 32 }}>
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <div style={{ width: 70, height: 70, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                <ZapIcon size={35} color="white" />
+              </div>
+              <h1 style={{ fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                Vrai ou Faux ?
+              </h1>
+              <p style={{ color: "#9A9488", marginTop: 8 }}>{isLogin ? "Connecte-toi" : "Crée ton compte"}</p>
+            </div>
+
+            {isLogin ? (
+              <input
+                type="text"
+                placeholder="Ton ID utilisateur"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                style={{ width: "100%", padding: "14px", background: "#F0EDE8", border: "1.5px solid #E5E0D8", borderRadius: 14, marginBottom: 16, fontSize: 15 }}
+              />
+            ) : (
+              <input
+                type="text"
+                placeholder="Ton pseudo"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                style={{ width: "100%", padding: "14px", background: "#F0EDE8", border: "1.5px solid #E5E0D8", borderRadius: 14, marginBottom: 16, fontSize: 15 }}
+              />
+            )}
+
+            {error && <p style={{ color: "#DC2626", fontSize: 13, marginBottom: 16 }}>{error}</p>}
+
+            <Button variant="gradient" full onClick={handleSubmit}>
+              {isLogin ? "Se connecter" : "S'inscrire"}
+            </Button>
+
+            <button onClick={() => { setIsLogin(!isLogin); setError(""); }} style={{ marginTop: 20, background: "none", border: "none", color: "#667eea", cursor: "pointer", fontSize: 13, width: "100%" }}>
+              {isLogin ? "Pas de compte ? Crée-en un" : "Déjà un compte ? Connecte-toi"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================
+    // APPLICATION PRINCIPALE
+    // ============================================
+    function App() {
+      const [user, setUser] = useState(null);
+      const [creatingChallenge, setCreatingChallenge] = useState(false);
+
+      useEffect(() => {
+        const savedUser = localStorage.getItem("current_user");
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+      }, []);
+
+      const handleLogin = (loggedUser) => {
+        setUser(loggedUser);
+        localStorage.setItem("current_user", JSON.stringify(loggedUser));
+        setCreatingChallenge(false);
+      };
+
+      const handleLogout = () => {
+        setUser(null);
+        localStorage.removeItem("current_user");
+      };
+
+      if (!user) {
+        return <LoginPage onLogin={handleLogin} />;
+      }
+
+      if (creatingChallenge) {
+        return <CreateQuizPage user={user} onComplete={() => setCreatingChallenge(false)} onBack={() => setCreatingChallenge(false)} />;
+      }
+
+      return <ProfilePage user={user} onLogout={handleLogout} onStartNewChallenge={() => setCreatingChallenge(true)} />;
     }
 
     const root = ReactDOM.createRoot(document.getElementById("root"));
-    root.render(<QuizApp />);
+    root.render(<App />);
   </script>
 </body>
 </html>
