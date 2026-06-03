@@ -62,7 +62,7 @@
     };
 
     // ============================================
-    // SYSTÈME DE STOCKAGE JSON
+    // STOCKAGE
     // ============================================
     const STORAGE_KEYS = {
       USERS: "vrai_ou_faux_users",
@@ -70,7 +70,6 @@
       STATS: "vrai_ou_faux_stats"
     };
 
-    // Sauvegarder un utilisateur
     const saveUser = (userData) => {
       const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
       users[userData.id] = userData;
@@ -78,18 +77,15 @@
       return userData;
     };
 
-    // Récupérer un utilisateur
     const getUser = (userId) => {
       const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
       return users[userId] || null;
     };
 
-    // Récupérer tous les utilisateurs
     const getAllUsers = () => {
       return JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
     };
 
-    // Ajouter un ami à un utilisateur
     const addFriend = (userId, friendId) => {
       const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
       if (users[userId] && !users[userId].friends.includes(friendId)) {
@@ -98,7 +94,6 @@
       }
     };
 
-    // Sauvegarder un défi
     const saveChallenge = (challengeId, data) => {
       const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
       challenges[challengeId] = {
@@ -107,18 +102,14 @@
         participants: data.participants || []
       };
       localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(challenges));
-      
-      // Mettre à jour les stats de l'utilisateur
       updateUserStats(data.creatorId);
     };
 
-    // Récupérer un défi
     const getChallenge = (challengeId) => {
       const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
       return challenges[challengeId] || null;
     };
 
-    // Mettre à jour les statistiques d'un utilisateur
     const updateUserStats = (userId) => {
       const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
       const userChallenges = Object.values(challenges).filter(c => c.creatorId === userId);
@@ -132,22 +123,6 @@
       const allStats = JSON.parse(localStorage.getItem(STORAGE_KEYS.STATS) || "{}");
       allStats[userId] = stats;
       localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(allStats));
-    };
-
-    // Ajouter un participant à un défi
-    const addParticipant = (challengeId, participantData) => {
-      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
-      if (challenges[challengeId]) {
-        if (!challenges[challengeId].participants) challenges[challengeId].participants = [];
-        challenges[challengeId].participants.push({
-          ...participantData,
-          date: new Date().toISOString()
-        });
-        localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(challenges));
-        
-        // Mettre à jour les stats du créateur
-        updateUserStats(challenges[challengeId].creatorId);
-      }
     };
 
     // ============================================
@@ -178,7 +153,7 @@
     const LogoutIcon = () => <Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l4-4-4-4 M12 3h9v9 M12 12h9" />;
 
     // ============================================
-    // COMPOSANT BOUTON
+    // BOUTON
     // ============================================
     function Button({ children, onClick, variant = "primary", disabled, icon: IconComp, full }) {
       const variants = {
@@ -215,7 +190,7 @@
     }
 
     // ============================================
-    // PAGE PROFIL UTILISATEUR
+    // PAGE PROFIL
     // ============================================
     function ProfilePage({ user, onLogout, onStartNewChallenge }) {
       const [allUsers, setAllUsers] = useState({});
@@ -253,7 +228,6 @@
         <div style={{ minHeight: "100vh", padding: "40px 16px" }}>
           <div style={{ maxWidth: 800, margin: "0 auto" }}>
             
-            {/* En-tête du profil */}
             <div style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 32, marginBottom: 24 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
                 <div style={{ width: 80, height: 80, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: 40, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -268,7 +242,6 @@
                 </Button>
               </div>
               
-              {/* Statistiques */}
               <div style={{ display: "flex", gap: 20, marginTop: 24, paddingTop: 24, borderTop: "1px solid #F0EDE8" }}>
                 <div style={{ textAlign: "center", flex: 1 }}>
                   <div style={{ fontSize: 32, fontWeight: 800, color: "#667eea" }}>{userStats?.totalChallenges || 0}</div>
@@ -285,12 +258,10 @@
               </div>
             </div>
 
-            {/* Bouton créer défi */}
             <Button variant="gradient" full icon={ZapIcon} onClick={onStartNewChallenge} style={{ marginBottom: 24 }}>
               + Créer un nouveau défi
             </Button>
 
-            {/* Liste des amis */}
             <div style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24, marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <h2 style={{ fontSize: 20, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
@@ -347,7 +318,6 @@
               )}
             </div>
 
-            {/* Historique des défis */}
             <div style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24 }}>
               <h2 style={{ fontSize: 20, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                 <TrophyIcon size={20} /> Mes défis ({userChallenges.length})
@@ -364,10 +334,10 @@
                           <div style={{ fontSize: 12, color: "#9A9488" }}>{challenge.participants?.length || 0} participants</div>
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => window.open(`challenge.html?id=${challenge.id}`, '_blank')} style={{ background: "#667eea", color: "#fff", border: "none", borderRadius: 10, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
+                          <button onClick={() => window.open(`/challenge.html?id=${challenge.id}`, '_blank')} style={{ background: "#667eea", color: "#fff", border: "none", borderRadius: 10, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
                             🔗 Partager
                           </button>
-                          <button onClick={() => window.open(`results.html?id=${challenge.id}`, '_blank')} style={{ background: "#1A1A1A", color: "#fff", border: "none", borderRadius: 10, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
+                          <button onClick={() => window.open(`/results.html?id=${challenge.id}`, '_blank')} style={{ background: "#1A1A1A", color: "#fff", border: "none", borderRadius: 10, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
                             📊 Résultats
                           </button>
                         </div>
@@ -449,7 +419,10 @@
         if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
       };
 
-      const getShareUrl = () => `${window.location.origin}${window.location.pathname.replace("index.html", "challenge.html")}?id=${challengeId}`;
+      // LIEN CORRIGÉ POUR VERCEL
+      const getShareUrl = () => {
+        return `${window.location.origin}/challenge.html?id=${challengeId}`;
+      };
 
       const copyToClipboard = async () => {
         await navigator.clipboard.writeText(getShareUrl());
@@ -460,6 +433,11 @@
       const shareOnWhatsApp = () => {
         const text = `🎯 Défi "Vrai ou Faux" !\n\n${user.name} vient de créer un quiz de 10 questions. Es-tu prêt à relever le défi ?\n\n👉 ${getShareUrl()}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      };
+
+      // LIEN RÉSULTATS CORRIGÉ
+      const viewResults = () => {
+        window.open(`/results.html?id=${challengeId}`, '_blank');
       };
 
       if (step === "quiz" && questions.length > 0) {
@@ -539,9 +517,16 @@
                 <Button variant="success" full icon={SendIcon} onClick={shareOnWhatsApp}>
                   Partager sur WhatsApp
                 </Button>
+                <Button variant="secondary" full icon={UsersIcon} onClick={viewResults}>
+                  Voir les résultats
+                </Button>
                 <Button variant="secondary" full onClick={onComplete}>
                   Retour au profil
                 </Button>
+              </div>
+
+              <div style={{ background: "#F0EDE8", borderRadius: 14, padding: 12, wordBreak: "break-all", fontSize: 11, color: "#6B7280", fontFamily: "monospace" }}>
+                🔗 {getShareUrl()}
               </div>
             </div>
           </div>
@@ -552,7 +537,7 @@
     }
 
     // ============================================
-    // PAGE DE CONNEXION / INSCRIPTION
+    // PAGE DE CONNEXION
     // ============================================
     function LoginPage({ onLogin }) {
       const [isLogin, setIsLogin] = useState(true);
