@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Résultats du défi - Vrai ou Faux</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { font-family: 'Outfit', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    const { useState, useEffect } = React;
+
+    const STORAGE_KEY = "vrai_ou_faux_defis";
+
+    const getChallenge = (challengeId) => {
+      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      return challenges[challengeId] || null;
+    };
+
+    const Icon = ({ d, size = 20, color = "currentColor", strokeWidth = 2 }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+        <path d={d} />
+      </svg>
+    );
+
+    const CheckCircleIcon = () => <Icon d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01l-3-3" />;
+    const XCircleIcon = () => <Icon d="M10 14L21 3 M21 14L10 3" />;
+    const UsersIcon = () => <Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
+    const TrophyIcon = () => <Icon d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6 M18 9h1.5a2.5 2.5 0 0 0 0-5H18 M4 22h16 M12 15v7 M9 11v1.5a3 3 0 0 0 6 0V11" />;
+
+    function ResultsPage() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const challengeId = urlParams.get('id');
+      
+      const [challenge, setChallenge] = useState(null);
+      const [error, setError] = useState(false);
+
+      useEffect(() => {
+        if (challengeId) {
+          const data = getChallenge(challengeId);
+          if (data) {
+            setChallenge(data);
+          } else {
+            setError(true);
+          }
+        } else {
+          setError(true);
+        }
+      }, [challengeId]);
+
+      // Calculer le score d'une personne
+      const calculateScore = (answers) => {
+        const validAnswers = answers.filter(a => a !== undefined && a !== null).length;
+        return Math.round((validAnswers / (challenge?.questions.length || 1)) * 100);
+      };
+
+      // Comparer les réponses entre créateur et ami
+      const compareAnswers = (creatorAnswers, friendAnswers) => {
+        let matchCount = 0;
+        for (let i = 0; i < challenge.questions.length; i++) {
+          if (creatorAnswers[i] !== undefined && friendAnswers[i] !== undefined && creatorAnswers[i] === friendAnswers[i]) {
+            matchCount++;
+          }
+        }
+        return Math.round((matchCount / challenge.questions.length) * 100);
+      };
+
+      if (error) {
+        return (
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div style={{ maxWidth: 460, width: "100%", background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 32, textAlign: "center" }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>😕</div>
+              <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Résultats introuvables</h2>
+              <p style={{ color: "#6B7280", marginBottom: 24 }}>Ce défi n'existe pas ou a été supprimé.</p>
+              <a href="index.html" style={{ color: "#667eea", textDecoration: "none", fontWeight: 600 }}>← Créer un défi</a>
+            </div>
+          </div>
+        );
+      }
+
+      if (!challenge) {
+        return (
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, border: "3px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        );
+      }
+
+      const creatorScore = calculateScore(challenge.creatorAnswers);
+      const friends = challenge.friendsResponses || [];
+
+      return (
+        <div style={{ minHeight: "100vh", padding: "40px 16px" }}>
+          <div style={{ maxWidth: 800, margin: "0 auto" }}>
+            
+            {/* En-tête */}
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                <div style={{ width: 70, height: 70, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <TrophyIcon size={35} color="white" strokeWidth={1.5} />
+                </div>
+              </div>
+              <h1 style={{ fontSize: 32, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Résultats du défi</h1>
+              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 16 }}>Crée par <strong>{challenge.creatorName}</strong></p>
+            </div>
+
+            {/* Carte du créateur */}
+            <div style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24, marginBottom: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                <div style={{ width: 50, height: 50, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <UsersIcon size={24} color="white" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 20, fontWeight: 700 }}>{challenge.creatorName}</h2>
+                  <p style={{ color: "#6B7280", fontSize: 13 }}>Créateur du défi</p>
+                </div>
+                <div style={{ marginLeft: "auto", textAlign: "right" }}>
+                  <div style={{ fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                    {creatorScore}%
+                  </div>
+                  <div style={{ fontSize: 11, color: "#9A9488" }}>taux de participation</div>
+                </div>
+              </div>
+              
+              {/* Barre de progression créateur */}
+              <div style={{ height: 8, background: "#F0EDE8", borderRadius: 99, overflow: "hidden" }}>
+                <div style={{ height: "100%", background: "linear-gradient(90deg, #667eea 0%, #764ba2 100%)", borderRadius: 99, width: `${creatorScore}%` }}></div>
+              </div>
+            </div>
+
+            {/* Liste des amis */}
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 16 }}>👥 Participants ({friends.length})</h3>
+
+            {friends.length === 0 ? (
+              <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 24, padding: 48, textAlign: "center" }}>
+                <p style={{ color: "#6B7280" }}>Aucun ami n'a encore répondu à ton défi.</p>
+                <p style={{ color: "#9A9488", fontSize: 13, marginTop: 8 }}>Partage le lien pour voir leurs réponses !</p>
+              </div>
+            ) : (
+              friends.map((friend, idx) => {
+                const friendScore = calculateScore(friend.answers);
+                const matchScore = compareAnswers(challenge.creatorAnswers, friend.answers);
+                const matchPercent = (matchScore / 100) * 100;
+                
+                return (
+                  <div key={idx} style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24, marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+                      <div style={{ width: 45, height: 45, background: "#F0EDE8", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                        👤
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ fontSize: 18, fontWeight: 700 }}>{friend.name}</h3>
+                        <p style={{ color: "#9A9488", fontSize: 11 }}>
+                          Répondu le {new Date(friend.date).toLocaleDateString("fr-FR")}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{friendScore}%</div>
+                        <div style={{ fontSize: 11, color: "#9A9488" }}>participations</div>
+                      </div>
+                    </div>
+
+                    {/* Compatibilité avec le créateur */}
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #F0EDE8" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>🤝 Compatibilité avec {challenge.creatorName}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#667eea" }}>{matchScore}%</span>
+                      </div>
+                      <div style={{ height: 6, background: "#F0EDE8", borderRadius: 99, overflow: "hidden" }}>
+                        <div style={{ height: "100%", background: "linear-gradient(90deg, #667eea 0%, #764ba2 100%)", borderRadius: 99, width: `${matchPercent}%` }}></div>
+                      </div>
+                    </div>
+
+                    {/* Détail des réponses (accordéon) */}
+                    <details style={{ marginTop: 16 }}>
+                      <summary style={{ fontSize: 12, color: "#667eea", cursor: "pointer", fontWeight: 600 }}>
+                        Voir le détail des réponses
+                      </summary>
+                      <div style={{ marginTop: 12 }}>
+                        {challenge.questions.map((q, i) => {
+                          const creatorAnswer = challenge.creatorAnswers[i];
+                          const friendAnswer = friend.answers[i];
+                          const isMatch = creatorAnswer !== undefined && friendAnswer !== undefined && creatorAnswer === friendAnswer;
+                          
+                          return (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid #F0EDE8", fontSize: 13 }}>
+                              <div style={{ minWidth: 24, fontWeight: 600, color: "#9A9488" }}>{i + 1}</div>
+                              <div style={{ flex: 1, color: "#1A1A1A" }}>{q.length > 60 ? q.substring(0, 60) + "..." : q}</div>
+                              <div style={{ display: "flex", gap: 16 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                  <span style={{ fontSize: 11, color: "#9A9488" }}>{challenge.creatorName}:</span>
+                                  {creatorAnswer === true ? <CheckCircleIcon size={14} color="#059669" /> : creatorAnswer === false ? <XCircleIcon size={14} color="#DC2626" /> : <span style={{ color: "#9A9488" }}>❓</span>}
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                  <span style={{ fontSize: 11, color: "#9A9488" }}>{friend.name}:</span>
+                                  {friendAnswer === true ? <CheckCircleIcon size={14} color="#059669" /> : friendAnswer === false ? <XCircleIcon size={14} color="#DC2626" /> : <span style={{ color: "#9A9488" }}>❓</span>}
+                                </div>
+                                {isMatch && <span style={{ fontSize: 10, color: "#059669" }}>✓ match</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  </div>
+                );
+              })
+            )}
+
+            {/* Bouton retour */}
+            <div style={{ textAlign: "center", marginTop: 32 }}>
+              <a href="index.html" style={{ display: "inline-block", background: "#fff", color: "#667eea", padding: "12px 28px", borderRadius: 14, textDecoration: "none", fontWeight: 700 }}>
+                ← Créer mon propre défi
+              </a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<ResultsPage />);
+  </script>
+</body>
+</html>
