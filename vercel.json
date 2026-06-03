@@ -1,18 +1,16 @@
 {
   "rewrites": [
     {
-      "source": "/challenge",
+      "source": "/challenge.html",
       "destination": "/challenge.html"
     },
     {
-      "source": "/results",
+      "source": "/results.html",
       "destination": "/results.html"
     },
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false
+  ]
 }
