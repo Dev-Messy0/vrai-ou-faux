@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vrai ou Faux ? - Défie tes amis</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { font-family: 'Outfit', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    input, textarea, select { font-family: 'Outfit', sans-serif; }
+    input::placeholder, textarea::placeholder { color: #B8B0A4; }
+    input:focus, textarea:focus, select:focus { outline: none; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in-up { animation: fadeInUp 0.5s ease-out; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    const { useState } = React;
+
+    // ============================================
+    // ICÔNES SVG (style Feather Icons)
+    // ============================================
+    const Icon = ({ d, size = 20, color = "currentColor", strokeWidth = 2 }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+        <path d={d} />
+      </svg>
+    );
+
+    const HelpCircleIcon = () => <Icon d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 16v-4 M12 8h.01" />;
+    const CheckCircleIcon = () => <Icon d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01l-3-3" />;
+    const XCircleIcon = () => <Icon d="M10 14L21 3 M21 14L10 3" />;
+    const ArrowRightIcon = () => <Icon d="M5 12h14 M12 5l7 7-7 7" />;
+    const ArrowLeftIcon = () => <Icon d="M19 12H5 M12 19l-7-7 7-7" />;
+    const SendIcon = () => <Icon d="M22 2L11 13 M22 2l-7 20-4-9-9-4 20-7z" />;
+    const CopyIcon = () => <Icon d="M16 3h5v5 M14 10L21 3 M10 14L3 21 M21 16v5h-5 M8 21H3v-5" />;
+    const CheckIcon = () => <Icon d="M20 6L9 17l-5-5" />;
+    const UserIcon = () => <Icon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />;
+    const ThumbsUpIcon = () => <Icon d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />;
+    const TrendingUpIcon = () => <Icon d="M23 6l-7.5 7.5-5-5L3 17" />;
+    const RefreshCwIcon = () => <Icon d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10 M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />;
+    const ZapIcon = () => <Icon d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />;
+    const ClockIcon = () => <Icon d="M12 6v6l4 2 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" />;
+    const HeartIcon = () => <Icon d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />;
+
+    // ============================================
+    // DONNÉES DU QUIZ (20 questions)
+    // ============================================
+    const QUESTIONS = [
+      { text: "Êtes-vous toujours en retard ?" },
+      { text: "Voulez-vous vous marier dans les 5 prochaines années ?" },
+      { text: "Aimez-vous les films d'horreur ?" },
+      { text: "Avez-vous déjà eu une relation ?" },
+      { text: "Avez-vous déjà échoué à un examen important ?" },
+      { text: "Croyez-vous aux fantômes ?" },
+      { text: "Aimez-vous passer du temps seul ?" },
+      { text: "Avez-vous déjà pardonné à quelqu'un qui vous a fait du mal ?" },
+      { text: "Faites-vous beaucoup confiance aux gens ?" },
+      { text: "Chantez-vous sous la douche ?" },
+      { text: "Voulez-vous avoir des enfants ?" },
+      { text: "Portez-vous du parfum tous les jours ?" },
+      { text: "Aimes-tu aller à la gym ?" },
+      { text: "Avez-vous des tatouages ?" },
+      { text: "Avez-vous déjà écrit une lettre d'amour ?" },
+      { text: "Savez-vous danser ?" },
+      { text: "Aimes-tu cuisiner ?" },
+      { text: "Dormez-vous beaucoup ?" },
+      { text: "Aimez-vous les animaux de compagnie ?" },
+      { text: "Te lèves-tu tôt ?" }
+    ];
+
+    // ============================================
+    // COMPOSANTS UI (style NZEM)
+    // ============================================
+    function Button({ children, onClick, variant = "primary", disabled, icon: IconComp, full }) {
+      const variants = {
+        primary: { background: "#1A1A1A", color: "#fff", border: "none" },
+        secondary: { background: "#F0EDE8", color: "#1A1A1A", border: "1.5px solid #E5E0D8" },
+        success: { background: "#059669", color: "#fff", border: "none" },
+        gradient: { background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "#fff", border: "none" }
+      };
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          style={{
+            ...variants[variant],
+            borderRadius: 14,
+            padding: "13px 22px",
+            fontWeight: 700,
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            cursor: disabled ? "not-allowed" : "pointer",
+            opacity: disabled ? 0.55 : 1,
+            width: full ? "100%" : "auto",
+            transition: "opacity .15s, transform .1s"
+          }}
+          onMouseDown={e => e.currentTarget.style.transform = "scale(0.97)"}
+          onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
+        >
+          {IconComp && <IconComp size={15} />}
+          {children}
+        </button>
+      );
+    }
+
+    // ============================================
+    // COMPOSANT PRINCIPAL
+    // ============================================
+    function QuizApp() {
+      const [step, setStep] = useState("welcome");
+      const [userName, setUserName] = useState("");
+      const [currentIndex, setCurrentIndex] = useState(0);
+      const [answers, setAnswers] = useState([]);
+      const [challengeId, setChallengeId] = useState(null);
+      const [copied, setCopied] = useState(false);
+
+      const answeredCount = answers.filter(a => a !== undefined).length;
+      const progressPercent = (answeredCount / QUESTIONS.length) * 100;
+
+      const generateChallengeId = () => "DEFI_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+
+      const startQuiz = (name) => {
+        if (!name.trim()) name = "Joueur";
+        setUserName(name);
+        setAnswers(new Array(QUESTIONS.length));
+        setCurrentIndex(0);
+        setStep("quiz");
+        setChallengeId(generateChallengeId());
+      };
+
+      const answerQuestion = (value) => {
+        const newAnswers = [...answers];
+        newAnswers[currentIndex] = value;
+        setAnswers(newAnswers);
+        if (currentIndex + 1 < QUESTIONS.length) {
+          setCurrentIndex(currentIndex + 1);
+        } else {
+          setStep("result");
+        }
+      };
+
+      const skipQuestion = () => {
+        const newAnswers = [...answers];
+        newAnswers[currentIndex] = null;
+        setAnswers(newAnswers);
+        if (currentIndex + 1 < QUESTIONS.length) {
+          setCurrentIndex(currentIndex + 1);
+        } else {
+          setStep("result");
+        }
+      };
+
+      const previousQuestion = () => {
+        if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+      };
+
+      const getFinalScore = () => {
+        const validAnswers = answers.filter(a => a !== undefined && a !== null).length;
+        return Math.round((validAnswers / QUESTIONS.length) * 100);
+      };
+
+      const getShareUrl = () => `${window.location.origin}${window.location.pathname}?challenge=${challengeId}&user=${encodeURIComponent(userName)}`;
+
+      const copyToClipboard = async () => {
+        await navigator.clipboard.writeText(getShareUrl());
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      };
+
+      const shareOnWhatsApp = () => {
+        const text = `Défi "Vrai ou Faux" !\n\n${userName} vient de créer un quiz. Es-tu prêt à relever le défi ?\n\n👉 ${getShareUrl()}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      };
+
+      const restartQuiz = () => {
+        setStep("welcome");
+        setUserName("");
+        setAnswers([]);
+        setCurrentIndex(0);
+        setChallengeId(null);
+      };
+
+      // ÉCRAN D'ACCUEIL
+      if (step === "welcome") {
+        return (
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div style={{ maxWidth: 460, width: "100%", background: "rgba(255,255,255,0.95)", backdropFilter: "blur(8px)", borderRadius: 24, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", padding: 32 }}>
+              <div style={{ textAlign: "center", marginBottom: 32 }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                  <div style={{ width: 80, height: 80, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)" }}>
+                    <ZapIcon size={40} color="white" strokeWidth={1.5} />
+                  </div>
+                </div>
+                <h1 style={{ fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 8 }}>
+                  Vrai ou Faux ?
+                </h1>
+                <p style={{ color: "#9A9488", fontSize: 14 }}>Crée ton défi personnalisé</p>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <input
+                  type="text"
+                  placeholder="Ton pseudo..."
+                  style={{ width: "100%", padding: "12px 16px", background: "#F0EDE8", border: "1.5px solid #E5E0D8", borderRadius: 14, fontSize: 15, fontWeight: 500 }}
+                  onKeyPress={(e) => e.key === 'Enter' && startQuiz(e.target.value)}
+                  id="userNameInput"
+                />
+                <Button variant="gradient" full icon={ThumbsUpIcon} onClick={() => startQuiz(document.getElementById('userNameInput').value)}>
+                  Commencer le défi
+                </Button>
+              </div>
+
+              <div style={{ marginTop: 24, textAlign: "center", fontSize: 11, color: "#9A9488", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <ClockIcon size={12} />
+                20 questions · Défie tes amis
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ÉCRAN QUIZ
+      if (step === "quiz") {
+        const currentQuestion = QUESTIONS[currentIndex];
+
+        return (
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div style={{ maxWidth: 560, width: "100%", background: "rgba(255,255,255,0.95)", backdropFilter: "blur(8px)", borderRadius: 24, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", padding: 28 }}>
+              
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#9A9488", marginBottom: 8 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <TrendingUpIcon size={12} />
+                    Progression
+                  </span>
+                  <span>{answeredCount}/{QUESTIONS.length}</span>
+                </div>
+                <div style={{ height: 4, background: "#F0EDE8", borderRadius: 99, overflow: "hidden" }}>
+                  <div style={{ height: "100%", background: "linear-gradient(90deg, #667eea 0%, #764ba2 100%)", borderRadius: 99, width: `${progressPercent}%`, transition: "width 0.5s ease-out" }}></div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: "center", marginBottom: 32 }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+                  <div style={{ width: 80, height: 80, background: "#F0EDE8", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <HelpCircleIcon size={40} color="#667eea" strokeWidth={1.5} />
+                  </div>
+                </div>
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1A1A1A", marginBottom: 8 }}>
+                  {currentQuestion.text}
+                </h2>
+                <p style={{ fontSize: 13, color: "#9A9488" }}>
+                  Question {currentIndex + 1} / {QUESTIONS.length}
+                </p>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+                <button
+                  onClick={() => answerQuestion(true)}
+                  style={{ flex: 1, background: "#059669", color: "#fff", fontWeight: 700, padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                >
+                  <CheckCircleIcon size={18} color="white" />
+                  Vrai
+                </button>
+                <button
+                  onClick={() => answerQuestion(false)}
+                  style={{ flex: 1, background: "#DC2626", color: "#fff", fontWeight: 700, padding: "14px", borderRadius: 14, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                >
+                  <XCircleIcon size={18} color="white" />
+                  Faux
+                </button>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                <button
+                  onClick={previousQuestion}
+                  disabled={currentIndex === 0}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "transparent", cursor: currentIndex === 0 ? "not-allowed" : "pointer", color: currentIndex === 0 ? "#D1D5DB" : "#667eea", display: "flex", alignItems: "center", gap: 4 }}
+                >
+                  <ArrowLeftIcon size={14} />
+                  Précédent
+                </button>
+                <button
+                  onClick={skipQuestion}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#9A9488" }}
+                >
+                  Sauter
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ÉCRAN RÉSULTATS
+      if (step === "result") {
+        const score = getFinalScore();
+        const answeredRealCount = answers.filter(a => a !== undefined && a !== null).length;
+
+        return (
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div style={{ maxWidth: 460, width: "100%", background: "rgba(255,255,255,0.95)", backdropFilter: "blur(8px)", borderRadius: 24, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", padding: 32 }}>
+              
+              <div style={{ textAlign: "center", marginBottom: 24 }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                  <div style={{ width: 80, height: 80, background: "linear-gradient(135deg, #059669 0%, #10B981 100%)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)" }}>
+                    <CheckIcon size={40} color="white" strokeWidth={1.5} />
+                  </div>
+                </div>
+                <h2 style={{ fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 4 }}>
+                  Bravo, {userName} !
+                </h2>
+                <p style={{ color: "#9A9488", fontSize: 13 }}>Ton défi est prêt à être partagé</p>
+              </div>
+
+              <div style={{ background: "#F0EDE8", borderRadius: 16, padding: 20, marginBottom: 24, textAlign: "center" }}>
+                <div style={{ fontSize: 48, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  {score}%
+                </div>
+                <div style={{ fontSize: 13, color: "#6B7280", marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <HeartIcon size={14} />
+                  {answeredRealCount} / {QUESTIONS.length} questions répondues
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+                <Button variant="primary" full icon={CopyIcon} onClick={copyToClipboard}>
+                  {copied ? "Copié !" : "Copier le lien du défi"}
+                </Button>
+                <Button variant="success" full icon={SendIcon} onClick={shareOnWhatsApp}>
+                  Partager sur WhatsApp
+                </Button>
+              </div>
+
+              <div style={{ background: "#F0EDE8", borderRadius: 14, padding: 12, marginBottom: 20, wordBreak: "break-all", fontSize: 11, color: "#6B7280", fontFamily: "monospace" }}>
+                🔗 {getShareUrl()}
+              </div>
+
+              <Button variant="secondary" full icon={RefreshCwIcon} onClick={restartQuiz}>
+                Créer un nouveau défi
+              </Button>
+
+              <div style={{ textAlign: "center", fontSize: 10, color: "#9A9488", marginTop: 24, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <UserIcon size={12} />
+                Envoie le lien à tes amis pour qu'ils répondent à leur tour !
+              </div>
+            </div>
+          </div>
+        );
+      }
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<QuizApp />);
+  </script>
+</body>
+</html>
