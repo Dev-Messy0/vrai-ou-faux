@@ -23,6 +23,113 @@
     const { useState, useEffect } = React;
 
     // ============================================
+    // CONFIGURATION SUPABASE
+    // ============================================
+    const SUPABASE_URL = 'https://clsqthmhympkjanhvwqx.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_z8qkypmQ9Ka_JFCAZc7GEw_GeZjeFZB';
+
+    // Client Supabase simple
+    const supabase = {
+      async request(endpoint, options = {}) {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            ...options.headers
+          },
+          ...options
+        });
+        if (!response.ok) {
+          console.error('Supabase error:', response.status);
+          return null;
+        }
+        return response.json();
+      },
+      
+      async getChallenge(challengeId) {
+        const result = await this.request(`challenges?id=eq.${challengeId}&select=*`);
+        return result && result[0] ? result[0] : null;
+      },
+      
+      async saveChallenge(challengeData) {
+        return await this.request(`challenges`, {
+          method: 'POST',
+          body: JSON.stringify(challengeData)
+        });
+      },
+      
+      async addParticipant(challengeId, participantData) {
+        const challenge = await this.getChallenge(challengeId);
+        if (challenge) {
+          const participants = [...(challenge.participants || []), participantData];
+          return await this.request(`challenges?id=eq.${challengeId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ participants })
+          });
+        }
+        return null;
+      },
+      
+      async getUser(userId) {
+        const result = await this.request(`users?id=eq.${userId}&select=*`);
+        return result && result[0] ? result[0] : null;
+      },
+      
+      async saveUser(userData) {
+        const existing = await this.getUser(userData.id);
+        if (existing) {
+          return await this.request(`users?id=eq.${userData.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(userData)
+          });
+        } else {
+          return await this.request(`users`, {
+            method: 'POST',
+            body: JSON.stringify(userData)
+          });
+        }
+      },
+      
+      async getAllUsers() {
+        const result = await this.request(`users?select=id,name`);
+        const users = {};
+        if (result) result.forEach(u => { users[u.id] = u; });
+        return users;
+      },
+      
+      async addFriend(userId, friendId) {
+        const user = await this.getUser(userId);
+        if (user && !user.friends?.includes(friendId)) {
+          const friends = [...(user.friends || []), friendId];
+          return await this.request(`users?id=eq.${userId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ friends })
+          });
+        }
+        return null;
+      },
+      
+      async getUserChallenges(userId) {
+        const result = await this.request(`challenges?creatorId=eq.${userId}&order=createdAt.desc`);
+        return result || [];
+      },
+      
+      async updateUserStats(userId) {
+        const challenges = await this.getUserChallenges(userId);
+        const stats = {
+          totalChallenges: challenges.length,
+          totalParticipants: challenges.reduce((sum, c) => sum + (c.participants?.length || 0), 0),
+          lastActive: new Date().toISOString()
+        };
+        return await this.request(`users?id=eq.${userId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ stats })
+        });
+      }
+    };
+
+    // ============================================
     // 50 QUESTIONS
     // ============================================
     const ALL_QUESTIONS = [
@@ -62,70 +169,6 @@
     };
 
     // ============================================
-    // STOCKAGE
-    // ============================================
-    const STORAGE_KEYS = {
-      USERS: "vrai_ou_faux_users",
-      CHALLENGES: "vrai_ou_faux_challenges",
-      STATS: "vrai_ou_faux_stats"
-    };
-
-    const saveUser = (userData) => {
-      const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
-      users[userData.id] = userData;
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-      return userData;
-    };
-
-    const getUser = (userId) => {
-      const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
-      return users[userId] || null;
-    };
-
-    const getAllUsers = () => {
-      return JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
-    };
-
-    const addFriend = (userId, friendId) => {
-      const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
-      if (users[userId] && !users[userId].friends.includes(friendId)) {
-        users[userId].friends.push(friendId);
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-      }
-    };
-
-    const saveChallenge = (challengeId, data) => {
-      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
-      challenges[challengeId] = {
-        ...data,
-        createdAt: new Date().toISOString(),
-        participants: data.participants || []
-      };
-      localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(challenges));
-      updateUserStats(data.creatorId);
-    };
-
-    const getChallenge = (challengeId) => {
-      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
-      return challenges[challengeId] || null;
-    };
-
-    const updateUserStats = (userId) => {
-      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
-      const userChallenges = Object.values(challenges).filter(c => c.creatorId === userId);
-      
-      const stats = {
-        totalChallenges: userChallenges.length,
-        totalParticipants: userChallenges.reduce((sum, c) => sum + (c.participants?.length || 0), 0),
-        lastActive: new Date().toISOString()
-      };
-      
-      const allStats = JSON.parse(localStorage.getItem(STORAGE_KEYS.STATS) || "{}");
-      allStats[userId] = stats;
-      localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(allStats));
-    };
-
-    // ============================================
     // ICÔNES SVG
     // ============================================
     const Icon = ({ d, size = 20, color = "currentColor", strokeWidth = 2 }) => (
@@ -146,7 +189,6 @@
     const TrendingUpIcon = () => <Icon d="M23 6l-7.5 7.5-5-5L3 17" />;
     const RefreshCwIcon = () => <Icon d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10 M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />;
     const ZapIcon = () => <Icon d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />;
-    const ClockIcon = () => <Icon d="M12 6v6l4 2 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" />;
     const HeartIcon = () => <Icon d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />;
     const UsersIcon = () => <Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
     const TrophyIcon = () => <Icon d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6 M18 9h1.5a2.5 2.5 0 0 0 0-5H18 M4 22h16 M12 15v7 M9 11v1.5a3 3 0 0 0 6 0V11" />;
@@ -198,31 +240,44 @@
       const [userStats, setUserStats] = useState(null);
       const [showAddFriend, setShowAddFriend] = useState(false);
       const [friendSearch, setFriendSearch] = useState("");
+      const [loading, setLoading] = useState(true);
 
       useEffect(() => {
-        const users = getAllUsers();
-        setAllUsers(users);
-        
-        const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
-        const myChallenges = Object.values(challenges).filter(c => c.creatorId === user.id);
-        setUserChallenges(myChallenges);
-        
-        const stats = JSON.parse(localStorage.getItem(STORAGE_KEYS.STATS) || "{}");
-        setUserStats(stats[user.id] || { totalChallenges: 0, totalParticipants: 0 });
+        loadData();
       }, [user.id]);
 
-      const addNewFriend = (friendId) => {
-        addFriend(user.id, friendId);
-        setAllUsers(getAllUsers());
-        setShowAddFriend(false);
-        setFriendSearch("");
+      const loadData = async () => {
+        setLoading(true);
+        const users = await supabase.getAllUsers();
+        setAllUsers(users);
+        
+        const challenges = await supabase.getUserChallenges(user.id);
+        setUserChallenges(challenges);
+        
+        setUserStats(user.stats || { totalChallenges: 0, totalParticipants: 0 });
+        setLoading(false);
+      };
+
+      const addNewFriend = async (friendId) => {
+        await supabase.addFriend(user.id, friendId);
+        // Mettre à jour l'utilisateur local
+        const updatedUser = await supabase.getUser(user.id);
+        if (updatedUser) {
+          localStorage.setItem("current_user", JSON.stringify(updatedUser));
+          window.location.reload();
+        }
       };
 
       const friendList = user.friends || [];
-      const availableFriends = Object.values(allUsers).filter(u => 
-        u.id !== user.id && !friendList.includes(u.id) && 
-        (friendSearch === "" || u.name.toLowerCase().includes(friendSearch.toLowerCase()))
-      );
+
+      if (loading) {
+        return (
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, border: "3px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        );
+      }
 
       return (
         <div style={{ minHeight: "100vh", padding: "40px 16px" }}>
@@ -281,9 +336,9 @@
                     onChange={(e) => setFriendSearch(e.target.value)}
                     style={{ width: "100%", padding: "10px 14px", borderRadius: 12, border: "1px solid #E5E0D8", marginBottom: 12 }}
                   />
-                  {availableFriends.length > 0 ? (
+                  {Object.values(allUsers).filter(u => u.id !== user.id && !friendList.includes(u.id) && (friendSearch === "" || u.name.toLowerCase().includes(friendSearch.toLowerCase()))).length > 0 ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {availableFriends.map(friend => (
+                      {Object.values(allUsers).filter(u => u.id !== user.id && !friendList.includes(u.id) && (friendSearch === "" || u.name.toLowerCase().includes(friendSearch.toLowerCase()))).map(friend => (
                         <div key={friend.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#fff", borderRadius: 12 }}>
                           <div>
                             <div style={{ fontWeight: 600 }}>{friend.name}</div>
@@ -362,6 +417,7 @@
       const [questions, setQuestions] = useState([]);
       const [challengeId, setChallengeId] = useState(null);
       const [copied, setCopied] = useState(false);
+      const [saving, setSaving] = useState(false);
 
       useEffect(() => {
         setQuestions(getRandomQuestions());
@@ -373,7 +429,22 @@
 
       const generateChallengeId = () => "DEFI_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
 
-      const answerQuestion = (value) => {
+      const saveChallengeToSupabase = async (newChallengeId, newAnswers) => {
+        setSaving(true);
+        await supabase.saveChallenge({
+          id: newChallengeId,
+          creatorId: user.id,
+          creatorName: user.name,
+          questions: questions,
+          creatorAnswers: newAnswers,
+          participants: [],
+          createdAt: new Date().toISOString()
+        });
+        await supabase.updateUserStats(user.id);
+        setSaving(false);
+      };
+
+      const answerQuestion = async (value) => {
         const newAnswers = [...answers];
         newAnswers[currentIndex] = value;
         setAnswers(newAnswers);
@@ -382,19 +453,12 @@
         } else {
           const newChallengeId = generateChallengeId();
           setChallengeId(newChallengeId);
-          saveChallenge(newChallengeId, {
-            id: newChallengeId,
-            creatorId: user.id,
-            creatorName: user.name,
-            questions: questions,
-            creatorAnswers: newAnswers,
-            participants: []
-          });
+          await saveChallengeToSupabase(newChallengeId, newAnswers);
           setStep("result");
         }
       };
 
-      const skipQuestion = () => {
+      const skipQuestion = async () => {
         const newAnswers = [...answers];
         newAnswers[currentIndex] = null;
         setAnswers(newAnswers);
@@ -403,14 +467,7 @@
         } else {
           const newChallengeId = generateChallengeId();
           setChallengeId(newChallengeId);
-          saveChallenge(newChallengeId, {
-            id: newChallengeId,
-            creatorId: user.id,
-            creatorName: user.name,
-            questions: questions,
-            creatorAnswers: newAnswers,
-            participants: []
-          });
+          await saveChallengeToSupabase(newChallengeId, newAnswers);
           setStep("result");
         }
       };
@@ -419,7 +476,6 @@
         if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
       };
 
-      // LIEN CORRIGÉ POUR VERCEL
       const getShareUrl = () => {
         return `${window.location.origin}/challenge.html?id=${challengeId}`;
       };
@@ -435,10 +491,21 @@
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
       };
 
-      // LIEN RÉSULTATS CORRIGÉ
       const viewResults = () => {
         window.open(`/results.html?id=${challengeId}`, '_blank');
       };
+
+      if (saving) {
+        return (
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ textAlign: "center", background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 32 }}>
+              <div style={{ width: 40, height: 40, border: "3px solid #667eea", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 16px" }}></div>
+              <p style={{ color: "#667eea", fontWeight: 500 }}>Sauvegarde du défi...</p>
+            </div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        );
+      }
 
       if (step === "quiz" && questions.length > 0) {
         const currentQuestion = questions[currentIndex];
@@ -502,7 +569,7 @@
                 <h2 style={{ fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                   Bravo, {user.name} !
                 </h2>
-                <p style={{ color: "#9A9488" }}>Ton défi est prêt</p>
+                <p style={{ color: "#9A9488" }}>Ton défi est sauvegardé sur Supabase</p>
               </div>
 
               <div style={{ background: "#F0EDE8", borderRadius: 16, padding: 20, marginBottom: 24, textAlign: "center" }}>
@@ -544,10 +611,12 @@
       const [name, setName] = useState("");
       const [userId, setUserId] = useState("");
       const [error, setError] = useState("");
+      const [loading, setLoading] = useState(false);
 
-      const handleSubmit = () => {
+      const handleSubmit = async () => {
+        setLoading(true);
         if (isLogin) {
-          const user = getUser(userId);
+          const user = await supabase.getUser(userId);
           if (user) {
             onLogin(user);
           } else {
@@ -556,18 +625,30 @@
         } else {
           if (!name.trim()) {
             setError("Nom requis");
+            setLoading(false);
             return;
           }
           const newUser = {
             id: "USER_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
             name: name.trim(),
             friends: [],
+            stats: { totalChallenges: 0, totalParticipants: 0 },
             createdAt: new Date().toISOString()
           };
-          saveUser(newUser);
+          await supabase.saveUser(newUser);
           onLogin(newUser);
         }
+        setLoading(false);
       };
+
+      if (loading) {
+        return (
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, border: "3px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        );
+      }
 
       return (
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -620,12 +701,14 @@
     function App() {
       const [user, setUser] = useState(null);
       const [creatingChallenge, setCreatingChallenge] = useState(false);
+      const [loading, setLoading] = useState(true);
 
       useEffect(() => {
         const savedUser = localStorage.getItem("current_user");
         if (savedUser) {
           setUser(JSON.parse(savedUser));
         }
+        setLoading(false);
       }, []);
 
       const handleLogin = (loggedUser) => {
@@ -638,6 +721,15 @@
         setUser(null);
         localStorage.removeItem("current_user");
       };
+
+      if (loading) {
+        return (
+          <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, border: "3px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        );
+      }
 
       if (!user) {
         return <LoginPage onLogin={handleLogin} />;
