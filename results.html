@@ -20,13 +20,32 @@
 
     const { useState, useEffect } = React;
 
-    const STORAGE_KEY = "vrai_ou_faux_defis";
+    // ============================================
+    // STOCKAGE (identique à index.html)
+    // ============================================
+    const STORAGE_KEYS = {
+      USERS: "vrai_ou_faux_users",
+      CHALLENGES: "vrai_ou_faux_challenges",
+      STATS: "vrai_ou_faux_stats"
+    };
 
     const getChallenge = (challengeId) => {
-      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      const challenges = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHALLENGES) || "{}");
       return challenges[challengeId] || null;
     };
 
+    const getAllUsers = () => {
+      return JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || "{}");
+    };
+
+    // Récupérer l'utilisateur connecté
+    const getCurrentUser = () => {
+      return JSON.parse(localStorage.getItem("current_user") || "null");
+    };
+
+    // ============================================
+    // ICÔNES
+    // ============================================
     const Icon = ({ d, size = 20, color = "currentColor", strokeWidth = 2 }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
         <path d={d} />
@@ -37,15 +56,24 @@
     const XCircleIcon = () => <Icon d="M10 14L21 3 M21 14L10 3" />;
     const UsersIcon = () => <Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
     const TrophyIcon = () => <Icon d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6 M18 9h1.5a2.5 2.5 0 0 0 0-5H18 M4 22h16 M12 15v7 M9 11v1.5a3 3 0 0 0 6 0V11" />;
+    const HeartIcon = () => <Icon d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />;
 
+    // ============================================
+    // RESULTS PAGE
+    // ============================================
     function ResultsPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const challengeId = urlParams.get('id');
       
       const [challenge, setChallenge] = useState(null);
+      const [currentUser, setCurrentUser] = useState(null);
+      const [allUsers, setAllUsers] = useState({});
       const [error, setError] = useState(false);
 
       useEffect(() => {
+        setCurrentUser(getCurrentUser());
+        setAllUsers(getAllUsers());
+        
         if (challengeId) {
           const data = getChallenge(challengeId);
           if (data) {
@@ -64,11 +92,11 @@
         return Math.round((validAnswers / (challenge?.questions.length || 1)) * 100);
       };
 
-      // Comparer les réponses entre créateur et ami
-      const compareAnswers = (creatorAnswers, friendAnswers) => {
+      // Comparer les réponses entre créateur et participant
+      const compareAnswers = (creatorAnswers, participantAnswers) => {
         let matchCount = 0;
         for (let i = 0; i < challenge.questions.length; i++) {
-          if (creatorAnswers[i] !== undefined && friendAnswers[i] !== undefined && creatorAnswers[i] === friendAnswers[i]) {
+          if (creatorAnswers[i] !== undefined && participantAnswers[i] !== undefined && creatorAnswers[i] === participantAnswers[i]) {
             matchCount++;
           }
         }
@@ -98,7 +126,10 @@
       }
 
       const creatorScore = calculateScore(challenge.creatorAnswers);
-      const friends = challenge.friendsResponses || [];
+      const participants = challenge.participants || [];
+      
+      // Vérifier si l'utilisateur connecté est le créateur
+      const isCreator = currentUser && currentUser.id === challenge.creatorId;
 
       return (
         <div style={{ minHeight: "100vh", padding: "40px 16px" }}>
@@ -112,12 +143,17 @@
                 </div>
               </div>
               <h1 style={{ fontSize: 32, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Résultats du défi</h1>
-              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 16 }}>Crée par <strong>{challenge.creatorName}</strong></p>
+              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 16 }}>Créé par <strong>{challenge.creatorName}</strong></p>
+              {!isCreator && (
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 8 }}>
+                  Tu es participant · {participants.find(p => p.userId === currentUser?.id) ? "Tu as déjà participé !" : "Partage ton résultat ?"}
+                </p>
+              )}
             </div>
 
             {/* Carte du créateur */}
             <div style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24, marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
                 <div style={{ width: 50, height: 50, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <UsersIcon size={24} color="white" />
                 </div>
@@ -133,41 +169,44 @@
                 </div>
               </div>
               
-              {/* Barre de progression créateur */}
               <div style={{ height: 8, background: "#F0EDE8", borderRadius: 99, overflow: "hidden" }}>
                 <div style={{ height: "100%", background: "linear-gradient(90deg, #667eea 0%, #764ba2 100%)", borderRadius: 99, width: `${creatorScore}%` }}></div>
               </div>
             </div>
 
-            {/* Liste des amis */}
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 16 }}>👥 Participants ({friends.length})</h3>
+            {/* Liste des participants */}
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 16 }}>👥 Participants ({participants.length})</h3>
 
-            {friends.length === 0 ? (
+            {participants.length === 0 ? (
               <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 24, padding: 48, textAlign: "center" }}>
-                <p style={{ color: "#6B7280" }}>Aucun ami n'a encore répondu à ton défi.</p>
+                <p style={{ color: "#6B7280" }}>Aucun participant n'a encore répondu à ce défi.</p>
                 <p style={{ color: "#9A9488", fontSize: 13, marginTop: 8 }}>Partage le lien pour voir leurs réponses !</p>
               </div>
             ) : (
-              friends.map((friend, idx) => {
-                const friendScore = calculateScore(friend.answers);
-                const matchScore = compareAnswers(challenge.creatorAnswers, friend.answers);
+              participants.map((participant, idx) => {
+                const participantScore = calculateScore(participant.answers);
+                const matchScore = compareAnswers(challenge.creatorAnswers, participant.answers);
                 const matchPercent = (matchScore / 100) * 100;
+                const isCurrentUserParticipant = currentUser && (participant.userId === currentUser.id || participant.name === currentUser.name);
                 
                 return (
-                  <div key={idx} style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24, marginBottom: 16 }}>
+                  <div key={idx} style={{ background: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24, marginBottom: 16, border: isCurrentUserParticipant ? "2px solid #667eea" : "none" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
                       <div style={{ width: 45, height: 45, background: "#F0EDE8", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
-                        👤
+                        {isCurrentUserParticipant ? "👤" : "👥"}
                       </div>
                       <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: 18, fontWeight: 700 }}>{friend.name}</h3>
+                        <h3 style={{ fontSize: 18, fontWeight: 700 }}>
+                          {participant.name}
+                          {isCurrentUserParticipant && <span style={{ fontSize: 12, color: "#667eea", marginLeft: 8 }}>(toi)</span>}
+                        </h3>
                         <p style={{ color: "#9A9488", fontSize: 11 }}>
-                          Répondu le {new Date(friend.date).toLocaleDateString("fr-FR")}
+                          Répondu le {new Date(participant.date).toLocaleDateString("fr-FR")} à {new Date(participant.date).toLocaleTimeString("fr-FR", {hour: "2-digit", minute:"2-digit"})}
                         </p>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{friendScore}%</div>
-                        <div style={{ fontSize: 11, color: "#9A9488" }}>participations</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>{participantScore}%</div>
+                        <div style={{ fontSize: 11, color: "#9A9488" }}>complétion</div>
                       </div>
                     </div>
 
@@ -187,11 +226,11 @@
                       <summary style={{ fontSize: 12, color: "#667eea", cursor: "pointer", fontWeight: 600 }}>
                         Voir le détail des réponses
                       </summary>
-                      <div style={{ marginTop: 12 }}>
+                      <div style={{ marginTop: 12, maxHeight: 400, overflowY: "auto" }}>
                         {challenge.questions.map((q, i) => {
                           const creatorAnswer = challenge.creatorAnswers[i];
-                          const friendAnswer = friend.answers[i];
-                          const isMatch = creatorAnswer !== undefined && friendAnswer !== undefined && creatorAnswer === friendAnswer;
+                          const participantAnswer = participant.answers[i];
+                          const isMatch = creatorAnswer !== undefined && participantAnswer !== undefined && creatorAnswer === participantAnswer;
                           
                           return (
                             <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid #F0EDE8", fontSize: 13 }}>
@@ -203,8 +242,8 @@
                                   {creatorAnswer === true ? <CheckCircleIcon size={14} color="#059669" /> : creatorAnswer === false ? <XCircleIcon size={14} color="#DC2626" /> : <span style={{ color: "#9A9488" }}>❓</span>}
                                 </div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <span style={{ fontSize: 11, color: "#9A9488" }}>{friend.name}:</span>
-                                  {friendAnswer === true ? <CheckCircleIcon size={14} color="#059669" /> : friendAnswer === false ? <XCircleIcon size={14} color="#DC2626" /> : <span style={{ color: "#9A9488" }}>❓</span>}
+                                  <span style={{ fontSize: 11, color: "#9A9488" }}>{participant.name}:</span>
+                                  {participantAnswer === true ? <CheckCircleIcon size={14} color="#059669" /> : participantAnswer === false ? <XCircleIcon size={14} color="#DC2626" /> : <span style={{ color: "#9A9488" }}>❓</span>}
                                 </div>
                                 {isMatch && <span style={{ fontSize: 10, color: "#059669" }}>✓ match</span>}
                               </div>
@@ -221,7 +260,7 @@
             {/* Bouton retour */}
             <div style={{ textAlign: "center", marginTop: 32 }}>
               <a href="index.html" style={{ display: "inline-block", background: "#fff", color: "#667eea", padding: "12px 28px", borderRadius: 14, textDecoration: "none", fontWeight: 700 }}>
-                ← Créer mon propre défi
+                ← Retour à mon profil
               </a>
             </div>
           </div>
